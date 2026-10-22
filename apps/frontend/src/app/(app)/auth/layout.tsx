@@ -29,10 +29,12 @@ export default async function AuthLayout({
         </div>
         <div className="text-[36px] flex-1 pt-[88px] hidden lg:flex flex-col items-center">
           <div className="text-center">
-            Over <span className="text-[42px] text-[#FC69FF]">20,000+</span>{' '}
-            Entrepreneurs use
+            <span className="text-[#B0122C]">ZiziPost</span> by ZIZIAB
             <br />
-            Postiz To Grow Their Social Presence
+            Plan once. Post everywhere.
+            <div className="text-[16px] mt-[16px] text-[#aaa]">
+              Powered by open-source Postiz
+            </div>
           </div>
           <TestimonialComponent />
         </div>
