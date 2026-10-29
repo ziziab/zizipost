@@ -3,7 +3,6 @@ import { getT } from '@gitroom/react/translation/get.translation.service.backend
 export const dynamic = 'force-dynamic';
 import { ReactNode } from 'react';
 import loadDynamic from 'next/dynamic';
-import { TestimonialComponent } from '@gitroom/frontend/components/auth/testimonial.component';
 import { LogoTextComponent } from '@gitroom/frontend/components/ui/logo-text.component';
 import { MantineWrapper } from '@gitroom/react/helpers/mantine.wrapper';
 import { Toaster } from '@gitroom/react/toaster/toaster';
@@ -36,7 +35,11 @@ export default async function AuthLayout({
               Powered by open-source Postiz
             </div>
           </div>
-          <TestimonialComponent />
+          <ul className="mt-[48px] text-[18px] text-[#ddd] flex flex-col gap-[16px] max-w-[460px]">
+            <li>Schedule posts to Facebook, Instagram, LinkedIn, YouTube, Pinterest and X from one place</li>
+            <li>See every planned post on one calendar</li>
+            <li>Made in India for creators and small businesses</li>
+          </ul>
         </div>
       </div>
     </MantineWrapper>
