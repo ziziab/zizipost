@@ -28,7 +28,8 @@ export default async function AuthLayout({
         </div>
         <div className="text-[36px] flex-1 pt-[88px] hidden lg:flex flex-col items-center">
           <div className="text-center">
-            <span className="text-[#B0122C]">ZiziPost</span> by ZIZIAB
+            <span className="font-bold">ZIZI</span>
+            <span className="font-bold text-[#B0122C]">POST</span> by ZIZIAB
             <br />
             Plan once. Post everywhere.
             <div className="text-[16px] mt-[16px] text-[#aaa]">
