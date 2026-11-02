@@ -497,6 +497,28 @@ export abstract class SocialAbstract {
     return { none: true };
   }
 
+  // Turns a raw provider error into a short readable reason, so a failed
+  // post says why (for example X's "CreditsDepleted") instead of only
+  // "Unknown Error".
+  static describeError(err: any): string {
+    const data = err?.data || err?.response?.data || {};
+    const reason =
+      data?.detail ||
+      data?.title ||
+      data?.error?.message ||
+      (typeof data?.error === 'string' ? data.error : '') ||
+      data?.errors?.[0]?.message ||
+      data?.errors?.[0]?.detail ||
+      err?.message ||
+      '';
+    const code = err?.code || err?.status || data?.status;
+    const text = String(reason || '').trim().slice(0, 300);
+    if (!text) {
+      return 'Unknown Error';
+    }
+    return `Unknown Error: ${code ? `(${code}) ` : ''}${text}`;
+  }
+
   async runInConcurrent<T>(
     func: (...args: any[]) => Promise<T>,
     ignoreConcurrency?: boolean
@@ -507,7 +529,11 @@ export abstract class SocialAbstract {
       value = await func();
     } catch (err) {
       const handle = this.handleErrors(safeStringify(err), 200);
-      value = { err: true, value: 'Unknown Error', ...(handle || {}) };
+      value = {
+        err: true,
+        value: SocialAbstract.describeError(err),
+        ...(handle || {}),
+      };
       globalErr = err;
     }
 
