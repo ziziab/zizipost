@@ -1,3 +1,4 @@
+import { limitsOn } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   forwardRef,
   HttpException,
@@ -217,10 +218,11 @@ export class IntegrationService {
     newProvider: string,
     auth: { id: string; username: string }
   ) {
-    const existing = await this._integrationRepository.getIntegrationByInternalId(
-      org,
-      oldInternalId
-    );
+    const existing =
+      await this._integrationRepository.getIntegrationByInternalId(
+        org,
+        oldInternalId
+      );
 
     if (
       !existing ||
@@ -383,10 +385,7 @@ export class IntegrationService {
     const integrations = (
       await this._integrationRepository.getIntegrationsList(org)
     ).filter((f) => !f.disabled);
-    if (
-      !!process.env.STRIPE_PUBLISHABLE_KEY &&
-      integrations.length >= totalChannels
-    ) {
+    if (limitsOn() && integrations.length >= totalChannels) {
       throw new Error('You have reached the maximum number of channels');
     }
 

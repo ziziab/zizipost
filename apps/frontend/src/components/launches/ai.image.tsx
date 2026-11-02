@@ -23,6 +23,13 @@ const list = [
   'Pop Art',
   'Fantasy Realism',
 ];
+// ZIZIPOST image types. Better types use more image credits.
+const imageTypes = [
+  { key: 'standard', label: 'Standard', credits: 1 },
+  { key: 'hd', label: 'HD', credits: 4 },
+  { key: 'premium', label: 'Premium', credits: 4 },
+  { key: 'premium_hd', label: 'Premium HD', credits: 15 },
+];
 
 const AiImageModal: FC<{
   close: () => void;
@@ -36,6 +43,7 @@ const AiImageModal: FC<{
   const setLocked = useLaunchStore((p) => p.setLocked);
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState(list[0]);
+  const [imageType, setImageType] = useState(imageTypes[0].key);
 
   const generate = useCallback(async () => {
     if (!prompt.trim()) {
@@ -64,16 +72,17 @@ ${style}
 <!-- /style -->
 
 `,
+            option: imageType,
           }),
         })
       ).json();
-      if (image) {
+      if (image?.path) {
         onChange(image);
       }
     } catch (e) {}
     setLocked(false);
     setLoading(false);
-  }, [prompt, style, onChange]);
+  }, [prompt, style, imageType, onChange]);
 
   return (
     <div className="flex flex-col gap-[16px]">
@@ -104,6 +113,25 @@ ${style}
               )}
             >
               {p}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-[6px]">
+        <div className="text-[14px]">Image type</div>
+        <div className="flex flex-wrap gap-[8px]">
+          {imageTypes.map((p) => (
+            <div
+              key={p.key}
+              onClick={() => setImageType(p.key)}
+              className={clsx(
+                'cursor-pointer rounded-[4px] px-[10px] h-[30px] flex items-center text-[12px] border',
+                imageType === p.key
+                  ? 'bg-[#612BD3] border-[#612BD3] text-white'
+                  : 'bg-newColColor border-newBgLineColor'
+              )}
+            >
+              {p.label} · {p.credits} {p.credits === 1 ? 'credit' : 'credits'}
             </div>
           ))}
         </div>

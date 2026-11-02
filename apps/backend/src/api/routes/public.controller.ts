@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
   Param,
   Post,
   Query,
@@ -24,6 +25,7 @@ import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Readable, pipeline } from 'stream';
 import { promisify } from 'util';
+import { timingSafeEqual } from 'crypto';
 import { OnlyURL } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
@@ -50,6 +52,41 @@ export class PublicController {
       return;
     }
     return this._agentGraphInsertService.newPost(body.text);
+  }
+
+  // ZIZIPOST: ziziab.com tells ZIZIPOST which plan a customer paid for.
+  // Needs the shared key in ZIZIPOST_BILLING_KEY (header x-zizipost-key).
+  @Post('/zizipost-plan')
+  async setZizipostPlan(
+    @Req() req: Request,
+    @Body()
+    body: { email?: string; plan?: string; period?: 'MONTHLY' | 'YEARLY' }
+  ) {
+    const key = process.env.ZIZIPOST_BILLING_KEY || '';
+    const sent = String(req.headers['x-zizipost-key'] || '');
+    if (
+      key.length < 20 ||
+      sent.length !== key.length ||
+      !timingSafeEqual(Buffer.from(sent), Buffer.from(key))
+    ) {
+      throw new HttpException('Not allowed', 403);
+    }
+    const email = String(body?.email || '').trim();
+    const plan = String(body?.plan || '').toLowerCase();
+    const allowed = [
+      'starter',
+      'creator',
+      'agency',
+      'founder',
+      'founder-lifetime',
+      'unlimited',
+      'none',
+    ];
+    if (!email.includes('@') || !allowed.includes(plan)) {
+      throw new HttpException('Send an email and a plan', 400);
+    }
+    const period = body?.period === 'YEARLY' ? 'YEARLY' : 'MONTHLY';
+    return this._subscriptionService.setZizipostPlan(email, plan, period);
   }
 
   @Get(`/posts/:id`)

@@ -1,3 +1,7 @@
+import {
+  imageOption,
+  ImageOption,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
 import { MediaRepository } from '@gitroom/nestjs-libraries/database/prisma/media/media.repository';
 import { OpenaiService } from '@gitroom/nestjs-libraries/openai/openai.service';
@@ -105,7 +109,8 @@ export class MediaService {
   async generateImage(
     prompt: string,
     org: Organization,
-    generatePromptFirst?: boolean
+    generatePromptFirst?: boolean,
+    option?: ImageOption
   ) {
     try {
       const generating = await this._subscriptionService.useCredit(
@@ -116,8 +121,9 @@ export class MediaService {
             prompt = await this._openAi.generatePromptForPicture(prompt);
             console.log('Prompt:', prompt);
           }
-          return this._openAi.generateImage(prompt);
-        }
+          return this._openAi.generateImage(prompt, false, option);
+        },
+        imageOption(option).credits
       );
 
       return generating;

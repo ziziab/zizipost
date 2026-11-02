@@ -1,9 +1,15 @@
 import {
+  imageOption,
+  ImageOption,
+  limitsOn,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
   BadRequestException,
   Body,
   Controller,
   Delete,
   Get,
+  HttpException,
   Param,
   Post,
   Query,
@@ -54,17 +60,30 @@ export class MediaController {
     @GetOrgFromRequest() org: Organization,
     @Req() req: Request,
     @Body('prompt') prompt: string,
-    isPicturePrompt = false
+    isPicturePrompt = false,
+    @Body('option') option?: ImageOption
   ) {
+    // ZIZIPOST: better image models use more credits
+    const cost = imageOption(option).credits;
     const total = await this._subscriptionService.checkCredits(org);
-    if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
-      return false;
+    if (limitsOn() && total.credits < cost) {
+      throw new HttpException(
+        total.credits > 0
+          ? `This image needs ${cost} credits and you have ${total.credits} left this month. Choose a cheaper image type or buy more credits on ziziab.com.`
+          : 'You have no image credits left this month. Buy more credits on ziziab.com.',
+        402
+      );
     }
 
     return {
       output:
         'data:image/png;base64,' +
-        (await this._mediaService.generateImage(prompt, org, isPicturePrompt)),
+        (await this._mediaService.generateImage(
+          prompt,
+          org,
+          isPicturePrompt,
+          option
+        )),
     };
   }
 
@@ -72,9 +91,10 @@ export class MediaController {
   async generateImageFromText(
     @GetOrgFromRequest() org: Organization,
     @Req() req: Request,
-    @Body('prompt') prompt: string
+    @Body('prompt') prompt: string,
+    @Body('option') option?: ImageOption
   ) {
-    const image = await this.generateImage(org, req, prompt, true);
+    const image = await this.generateImage(org, req, prompt, true, option);
     if (!image) {
       return false;
     }
@@ -201,10 +221,12 @@ export class MediaController {
   }
 
   @Post('/video/function')
-  videoFunction(
-    @Body() body: VideoFunctionDto
-  ) {
-    return this._mediaService.videoFunction(body.identifier, body.functionName, body.params);
+  videoFunction(@Body() body: VideoFunctionDto) {
+    return this._mediaService.videoFunction(
+      body.identifier,
+      body.functionName,
+      body.params
+    );
   }
 
   @Get('/generate-video/:type/allowed')

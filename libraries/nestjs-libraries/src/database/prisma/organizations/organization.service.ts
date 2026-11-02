@@ -1,4 +1,5 @@
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
+import { limitsOn } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { HttpException, Injectable } from '@nestjs/common';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { NotificationService } from '@gitroom/nestjs-libraries/database/prisma/notifications/notification.service';
@@ -34,8 +35,18 @@ export class OrganizationService {
     return this._organizationRepository.getCount();
   }
 
-  async createMaxUser(id: string, name: string, saasName: string, email: string) {
-    return this._organizationRepository.createMaxUser(id, name, saasName, email);
+  async createMaxUser(
+    id: string,
+    name: string,
+    saasName: string,
+    email: string
+  ) {
+    return this._organizationRepository.createMaxUser(
+      id,
+      name,
+      saasName,
+      email
+    );
   }
 
   addUserToOrg(
@@ -100,16 +111,18 @@ export class OrganizationService {
     return this._organizationRepository.getOrgByCustomerId(customerId);
   }
 
-  async inviteTeamMember(org: Organization, user: User, body: AddTeamMemberDto) {
+  async inviteTeamMember(
+    org: Organization,
+    user: User,
+    body: AddTeamMemberDto
+  ) {
     const timeLimit = dayjs().add(2, 'day').format('YYYY-MM-DD HH:mm:ss');
     const id = makeId(5);
     const url =
       process.env.FRONTEND_URL +
       `/?org=${AuthService.signJWT({ ...body, orgId: org.id, timeLimit, id })}`;
     if (body.sendEmail) {
-      const inviter = user.name
-        ? `${user.name} (${user.email})`
-        : user.email;
+      const inviter = user.name ? `${user.name} (${user.email})` : user.email;
       await this._notificationsService.sendEmail(
         body.email,
         `${user.name || user.email} invited you to join "${org.name}"`,
@@ -123,7 +136,7 @@ export class OrganizationService {
     const tier =
       // @ts-ignore
       org?.subscription?.subscriptionTier ||
-      (!process.env.STRIPE_PUBLISHABLE_KEY ? 'ULTIMATE' : 'FREE');
+      (!limitsOn() ? 'ULTIMATE' : 'FREE');
 
     if (!pricing[tier].team_members) {
       throw new HttpException(

@@ -1,5 +1,10 @@
 import {
+  limitsOn,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
+import {
   BadRequestException,
+  HttpException,
   Injectable,
   NotFoundException,
   ValidationPipe,
@@ -1096,12 +1101,61 @@ export class PostsService {
     );
   }
 
+  // ZIZIPOST: each plan has a number of YouTube uploads a day, because all
+  // customers share one Google upload quota. Days are counted in India time.
+  private async checkYoutubeDailyLimit(orgId: string, body: CreatePostDto) {
+    if (!limitsOn() || body.type === 'draft') {
+      return;
+    }
+    const youtube = (body.posts || []).filter((p) =>
+      String((p.settings as any)?.__type || '')
+        .toLowerCase()
+        .startsWith('youtube')
+    );
+    if (!youtube.length) {
+      return;
+    }
+    const tier = await this._postRepository.getSubscriptionTier(orgId);
+    const perDay = tier ? pricing[tier]?.youtube_per_day || 0 : 0;
+    if (!tier || perDay <= 0) {
+      return;
+    }
+    const groups = youtube.map((p) => p.group).filter(Boolean);
+    const byDay = new Map<string, number>();
+    for (const p of youtube) {
+      const when =
+        body.type === 'now' ? dayjs() : dayjs.utc(p.date || body.date);
+      const day = when.utcOffset(330).format('YYYY-MM-DD');
+      byDay.set(day, (byDay.get(day) || 0) + 1);
+    }
+    for (const [day, adding] of byDay) {
+      const from = dayjs.utc(day).subtract(330, 'minute');
+      const used = await this._postRepository.countYoutubeUploads(
+        orgId,
+        from.toDate(),
+        from.add(1, 'day').toDate(),
+        groups
+      );
+      if (used + adding > perDay) {
+        throw new HttpException(
+          `Your plan allows ${perDay} YouTube uploads a day, and ${dayjs(
+            day
+          ).format(
+            'D MMM'
+          )} already has ${used}. Pick another day or upgrade your plan.`,
+          402
+        );
+      }
+    }
+  }
+
   async createPost(
     orgId: string,
     body: CreatePostDto,
     creationMethod: CreationMethod,
     keepGroup = false
   ): Promise<any[]> {
+    await this.checkYoutubeDailyLimit(orgId, body);
     const postList = [];
     const batchId = uuidv4();
     for (const post of body.posts) {

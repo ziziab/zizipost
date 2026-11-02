@@ -1,4 +1,5 @@
 import { AgentToolInterface } from '@gitroom/nestjs-libraries/chat/agent.tool.interface';
+import { limitsOn } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 import { Injectable } from '@nestjs/common';
@@ -45,12 +46,14 @@ export class GenerateImageTool implements AgentToolInterface {
       }),
       execute: async (inputData, context) => {
         checkAuth(inputData, context);
-        const org = JSON.parse((context?.requestContext as any)?.get('organization') as string);
+        const org = JSON.parse(
+          (context?.requestContext as any)?.get('organization') as string
+        );
         try {
           // Same credit gate as the dashboard's /media/generate-image route -
           // only enforced when billing is enabled (cloud), self-hosted is free
           const total = await this._subscriptionService.checkCredits(org);
-          if (process.env.STRIPE_PUBLISHABLE_KEY && total.credits <= 0) {
+          if (limitsOn() && total.credits <= 0) {
             return {
               error: 'No AI image credits are available on this account.',
             };

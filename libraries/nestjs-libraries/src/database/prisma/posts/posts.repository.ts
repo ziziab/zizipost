@@ -30,8 +30,39 @@ export class PostsRepository {
     private _comments: PrismaRepository<'comments'>,
     private _tags: PrismaRepository<'tags'>,
     private _tagsPosts: PrismaRepository<'tagsPosts'>,
-    private _errors: PrismaRepository<'errors'>
+    private _errors: PrismaRepository<'errors'>,
+    private _subscription: PrismaRepository<'subscription'>
   ) {}
+
+  // ZIZIPOST: the plan of an organization (null = no active plan)
+  async getSubscriptionTier(orgId: string) {
+    const sub = await this._subscription.model.subscription.findFirst({
+      where: { organizationId: orgId, deletedAt: null },
+      select: { subscriptionTier: true },
+    });
+    return sub?.subscriptionTier || null;
+  }
+
+  // ZIZIPOST: YouTube uploads planned or done in a time window, leaving out
+  // the post groups that are being edited right now
+  countYoutubeUploads(
+    orgId: string,
+    from: Date,
+    to: Date,
+    excludeGroups: string[] = []
+  ) {
+    return this._post.model.post.count({
+      where: {
+        organizationId: orgId,
+        deletedAt: null,
+        parentPostId: null,
+        publishDate: { gte: from, lt: to },
+        state: { in: ['QUEUE', 'PUBLISHED'] },
+        integration: { providerIdentifier: 'youtube' },
+        ...(excludeGroups.length ? { group: { notIn: excludeGroups } } : {}),
+      },
+    });
+  }
 
   searchForMissingThreeHoursPosts() {
     return this._post.model.post.findMany({
@@ -227,26 +258,26 @@ export class PostsRepository {
     return list
       .map((post) => ({ ...post, error: this.curatedError(post.error) }))
       .reduce((all, post) => {
-      if (!post.intervalInDays) {
-        return [...all, post];
-      }
-
-      const addMorePosts = [];
-      let startingDate = dayjs.utc(post.publishDate);
-      while (dayjs.utc(endDate).isSameOrAfter(startingDate)) {
-        if (dayjs(startingDate).isSameOrAfter(dayjs.utc(post.publishDate))) {
-          addMorePosts.push({
-            ...post,
-            publishDate: startingDate.toDate(),
-            actualDate: post.publishDate,
-          });
+        if (!post.intervalInDays) {
+          return [...all, post];
         }
 
-        startingDate = startingDate.add(post.intervalInDays, 'days');
-      }
+        const addMorePosts = [];
+        let startingDate = dayjs.utc(post.publishDate);
+        while (dayjs.utc(endDate).isSameOrAfter(startingDate)) {
+          if (dayjs(startingDate).isSameOrAfter(dayjs.utc(post.publishDate))) {
+            addMorePosts.push({
+              ...post,
+              publishDate: startingDate.toDate(),
+              actualDate: post.publishDate,
+            });
+          }
 
-      return [...all, ...addMorePosts];
-    }, [] as any[]);
+          startingDate = startingDate.add(post.intervalInDays, 'days');
+        }
+
+        return [...all, ...addMorePosts];
+      }, [] as any[]);
   }
 
   async getPostsList(orgId: string, query: GetPostsListDto) {

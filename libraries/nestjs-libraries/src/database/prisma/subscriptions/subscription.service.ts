@@ -24,9 +24,40 @@ export class SubscriptionService {
   useCredit<T>(
     organization: Organization,
     type = 'ai_images',
-    func: () => Promise<T>
+    func: () => Promise<T>,
+    amount = 1
   ): Promise<T> {
-    return this._subscriptionRepository.useCredit(organization, type, func);
+    return this._subscriptionRepository.useCredit(
+      organization,
+      type,
+      func,
+      amount
+    );
+  }
+
+  // ZIZIPOST: plans are paid on ziziab.com, which calls this when a plan
+  // starts, renews or ends
+  setZizipostPlan(
+    email: string,
+    plan: string,
+    period: 'MONTHLY' | 'YEARLY' = 'MONTHLY'
+  ) {
+    const map: Record<string, 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE'> = {
+      starter: 'STANDARD',
+      creator: 'TEAM',
+      founder: 'TEAM',
+      'founder-lifetime': 'TEAM',
+      agency: 'PRO',
+      unlimited: 'ULTIMATE',
+    };
+    const tier = map[plan] || null;
+    return this._subscriptionRepository.setExternalPlan(
+      email,
+      tier,
+      period,
+      plan.startsWith('founder'),
+      tier ? pricing[tier].channel || 0 : 0
+    );
   }
 
   getCode(code: string) {
