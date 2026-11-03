@@ -27,6 +27,8 @@ import { UserAgent } from '@gitroom/nestjs-libraries/user/user.agent';
 import { Provider } from '@prisma/client';
 import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 import * as Sentry from '@sentry/nestjs';
+import { createHmac, timingSafeEqual } from 'crypto';
+import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
 import { FarcasterProvider } from '@gitroom/nestjs-libraries/integrations/social/farcaster.provider';
 
 @ApiTags('Auth')
@@ -34,8 +36,57 @@ import { FarcasterProvider } from '@gitroom/nestjs-libraries/integrations/social
 export class AuthController {
   constructor(
     private _authService: AuthService,
-    private _emailService: EmailService
+    private _emailService: EmailService,
+    private _subscriptionService: SubscriptionService
   ) {}
+
+  // ZIZIPOST: "Open ZIZIPOST" on ziziab.com lands here with a signed, short-lived
+  // token. It signs the person in (creating the account the first time) and
+  // brings their ziziab.com plan along.
+  @Get('/ziziab')
+  async ziziabSignIn(
+    @Query('token') token: string,
+    @Res({ passthrough: false }) response: Response,
+    @RealIP() ip: string,
+    @UserAgent() userAgent: string
+  ) {
+    const data = readZiziabToken(token);
+    if (!data) {
+      return response.redirect(302, 'https://ziziab.com/my-account/');
+    }
+
+    try {
+      const jwt = await this._authService.ziziabSignIn(
+        data.email,
+        data.name || data.email.split('@')[0],
+        ip,
+        userAgent
+      );
+      if (data.plan) {
+        await this._subscriptionService.setZizipostPlan(
+          data.email,
+          data.plan,
+          data.period === 'YEARLY' ? 'YEARLY' : 'MONTHLY'
+        );
+      }
+
+      response.cookie('auth', jwt, {
+        domain: getCookieUrlFromDomain(process.env.FRONTEND_URL!),
+        ...(!process.env.NOT_SECURED
+          ? {
+              secure: true,
+              httpOnly: true,
+              sameSite: 'none',
+            }
+          : {}),
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365),
+      });
+      return response.redirect(302, `${process.env.FRONTEND_URL}/launches`);
+    } catch (e) {
+      Sentry.captureException(e);
+      return response.redirect(302, 'https://ziziab.com/my-account/');
+    }
+  }
 
   @Get('/can-register')
   async canRegister() {
@@ -381,5 +432,43 @@ export class AuthController {
     response.status(200).json({
       login: true,
     });
+  }
+}
+
+// ZIZIPOST: token = base64url(JSON) + "." + hex HMAC-SHA256 of that part, signed
+// with ZIZIPOST_BILLING_KEY by ziziab.com. It is valid for 2 minutes.
+function readZiziabToken(token?: string): {
+  email: string;
+  name?: string;
+  plan?: string;
+  period?: string;
+} | null {
+  const key = process.env.ZIZIPOST_BILLING_KEY || '';
+  const [payload, sig] = String(token || '').split('.');
+  if (key.length < 20 || !payload || !sig) {
+    return null;
+  }
+  const expected = createHmac('sha256', key).update(payload).digest('hex');
+  if (
+    sig.length !== expected.length ||
+    !timingSafeEqual(Buffer.from(sig), Buffer.from(expected))
+  ) {
+    return null;
+  }
+  try {
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    const now = Math.floor(Date.now() / 1000);
+    if (
+      typeof data?.email !== 'string' ||
+      !data.email.includes('@') ||
+      typeof data?.exp !== 'number' ||
+      data.exp < now ||
+      data.exp > now + 300
+    ) {
+      return null;
+    }
+    return data;
+  } catch {
+    return null;
   }
 }
