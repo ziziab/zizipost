@@ -10,6 +10,7 @@ import dayjs from 'dayjs';
 import { ForgotReturnPasswordDto } from '@gitroom/nestjs-libraries/dtos/auth/forgot-return.password.dto';
 import { EmailService } from '@gitroom/nestjs-libraries/services/email.service';
 import { NewsletterService } from '@gitroom/nestjs-libraries/newsletter/newsletter.service';
+import { makeSecureId } from '@gitroom/nestjs-libraries/services/make.secure.id';
 
 @Injectable()
 export class AuthService {
@@ -321,6 +322,40 @@ export class AuthService {
     }
 
     return { token };
+  }
+
+  // ZIZIPOST: people sign up and pay only on ziziab.com, which sends them here
+  // with a signed link. The first visit creates their ZIZIPOST account, so
+  // there is no second sign-up and no second password.
+  async ziziabSignIn(
+    email: string,
+    company: string,
+    ip: string,
+    userAgent: string
+  ) {
+    const existing = await this._userService.getUserByEmail(email);
+    if (existing) {
+      if (!existing.activated) {
+        await this._userService.activateUser(existing.id);
+      }
+      return this.jwt({ ...existing, activated: true });
+    }
+
+    const body = Object.assign(new CreateOrgUserDto(), {
+      email: email.toLowerCase(),
+      company,
+      provider: Provider.LOCAL,
+      // never used: they always come in through ziziab.com
+      password: makeSecureId(32),
+    });
+    const create = await this._organizationService.createOrgAndUser(
+      body,
+      ip,
+      userAgent
+    );
+    const user = create.users[0].user;
+    await this._userService.activateUser(user.id);
+    return this.jwt({ ...user, activated: true });
   }
 
   private async jwt(user: User) {
