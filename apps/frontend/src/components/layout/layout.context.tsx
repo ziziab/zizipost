@@ -23,7 +23,7 @@ export function setCookie(cname: string, cvalue: string, exdays: number) {
 }
 function LayoutContextInner(params: { children: ReactNode }) {
   const returnUrl = useReturnUrl();
-  const { backendUrl, isGeneral, isSecured } = useVariables();
+  const { backendUrl, isGeneral, isSecured, billingEnabled } = useVariables();
   const afterRequest = useCallback(
     async (url: string, options: RequestInit, response: Response) => {
       if (
@@ -93,8 +93,7 @@ function LayoutContextInner(params: { children: ReactNode }) {
           await deleteDialog(
             'You are currently on trial, in order to use the feature you must finish the trial',
             'Finish the trial, charge me now',
-            'Trial',
-
+            'Trial'
           )
         ) {
           window.open('/billing?finishTrial=true', '_blank');
@@ -112,18 +111,22 @@ function LayoutContextInner(params: { children: ReactNode }) {
                 .json()
                 .catch(() => ({}))
             ).message,
-            'Move to billing',
-            'Payment Required'
+            billingEnabled ? 'Move to billing' : 'See the plans',
+            billingEnabled ? 'Payment Required' : 'Upgrade your plan'
           )
         ) {
-          window.open('/billing', '_blank');
+          // ZIZIPOST plans are sold on ziziab.com, not through Stripe
+          window.open(
+            billingEnabled ? '/billing' : 'https://ziziab.com/zizipost/#plans',
+            '_blank'
+          );
           return false;
         }
         return true;
       }
       return true;
     },
-    []
+    [billingEnabled]
   );
   return (
     <FetchWrapperComponent baseUrl={backendUrl} afterRequest={afterRequest}>

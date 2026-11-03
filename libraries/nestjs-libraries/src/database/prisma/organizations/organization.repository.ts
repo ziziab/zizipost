@@ -1,5 +1,9 @@
+import {
+  limitsOn,
+  pricing,
+} from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { PrismaRepository } from '@gitroom/nestjs-libraries/database/prisma/prisma.service';
-import { Role, ShortLinkPreference, SubscriptionTier } from '@prisma/client';
+import { Role, ShortLinkPreference } from '@prisma/client';
 import { Injectable } from '@nestjs/common';
 import { AuthService } from '@gitroom/helpers/auth/auth.service';
 import { CreateOrgUserDto } from '@gitroom/nestjs-libraries/dtos/auth/create.org.user.dto';
@@ -430,12 +434,25 @@ export class OrganizationRepository {
         },
       });
 
-    if (
-      process.env.STRIPE_PUBLISHABLE_KEY &&
-      checkForSubscription?.subscription?.subscriptionTier ===
-        SubscriptionTier.STANDARD
-    ) {
-      return false;
+    if (limitsOn()) {
+      const tier = (
+        checkForSubscription?.subscription?.deletedAt
+          ? 'FREE'
+          : checkForSubscription?.subscription?.subscriptionTier || 'FREE'
+      ) as keyof typeof pricing;
+      if (!pricing[tier]?.team_members) {
+        return false;
+      }
+      // ZIZIPOST: each plan has a number of seats, the owner included
+      const seats = pricing[tier]?.seats || 0;
+      if (seats > 0) {
+        const used = await this._userOrg.model.userOrganization.count({
+          where: { organizationId: orgId, disabled: false },
+        });
+        if (used >= seats) {
+          return false;
+        }
+      }
     }
 
     const create = await this._userOrg.model.userOrganization.create({

@@ -1,3 +1,4 @@
+import { limitsOn } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import {
   Body,
   Controller,
@@ -111,14 +112,14 @@ export class UsersController {
     return {
       ...user,
       orgId: organization.id,
-      totalChannels: !process.env.STRIPE_PUBLISHABLE_KEY
+      totalChannels: !limitsOn()
         ? 10000
         : // @ts-ignore
           organization?.subscription?.totalChannels || pricing.FREE.channel,
       tier:
         // @ts-ignore
         organization?.subscription?.subscriptionTier ||
-        (!process.env.STRIPE_PUBLISHABLE_KEY ? 'ULTIMATE' : 'FREE'),
+        (!limitsOn() ? 'ULTIMATE' : 'FREE'),
       // @ts-ignore
       role: organization?.users[0]?.role,
       // @ts-ignore

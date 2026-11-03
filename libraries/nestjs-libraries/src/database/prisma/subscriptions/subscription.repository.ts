@@ -16,6 +16,63 @@ export class SubscriptionRepository {
     private _usedCodes: PrismaRepository<'usedCodes'>
   ) {}
 
+  // ZIZIPOST: set the plan that was paid on ziziab.com for every workspace the
+  // person owns. tier null = the plan ended.
+  async setExternalPlan(
+    email: string,
+    tier: 'STANDARD' | 'TEAM' | 'PRO' | 'ULTIMATE' | null,
+    period: 'MONTHLY' | 'YEARLY',
+    isLifetime: boolean,
+    totalChannels: number
+  ) {
+    const users = await this._user.model.user.findMany({
+      where: { email: { equals: email, mode: 'insensitive' }, deletedAt: null },
+      select: {
+        id: true,
+        organizations: {
+          where: { role: 'SUPERADMIN', disabled: false },
+          select: { organizationId: true },
+        },
+      },
+    });
+    const orgIds = [
+      ...new Set(
+        users.flatMap((u) => u.organizations.map((o) => o.organizationId))
+      ),
+    ];
+    for (const organizationId of orgIds) {
+      if (!tier) {
+        await this._subscription.model.subscription.updateMany({
+          where: { organizationId, provider: 'ziziab', deletedAt: null },
+          data: { deletedAt: new Date() },
+        });
+        continue;
+      }
+      await this._subscription.model.subscription.upsert({
+        where: { organizationId },
+        update: {
+          subscriptionTier: tier,
+          provider: 'ziziab',
+          totalChannels,
+          period,
+          isLifetime,
+          cancelAt: null,
+          deletedAt: null,
+        },
+        create: {
+          organizationId,
+          subscriptionTier: tier,
+          provider: 'ziziab',
+          totalChannels,
+          period,
+          isLifetime,
+          deletedAt: null,
+        },
+      });
+    }
+    return { workspaces: orgIds.length };
+  }
+
   getUserAccount(userId: string) {
     return this._user.model.user.findFirst({
       where: {
@@ -276,12 +333,13 @@ export class SubscriptionRepository {
   async useCredit<T>(
     org: Organization,
     type = 'ai_images',
-    func: () => Promise<T>
+    func: () => Promise<T>,
+    amount = 1
   ) {
     const data = await this._credits.model.credits.create({
       data: {
         organizationId: org.id,
-        credits: 1,
+        credits: amount,
         type,
       },
     });

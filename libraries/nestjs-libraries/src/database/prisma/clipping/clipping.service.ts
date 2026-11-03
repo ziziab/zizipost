@@ -1,4 +1,5 @@
 import { HttpException, Injectable } from '@nestjs/common';
+import { limitsOn } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Organization } from '@prisma/client';
 import { ApplicationFailure, TypedSearchAttributes } from '@temporalio/common';
 import { TemporalService } from 'nestjs-temporal-core';
@@ -156,7 +157,7 @@ export class ClippingService {
   // Minutes the organization can still spend. An install without billing has no
   // plans to meter against, the same way image generation treats it
   private async balance(organizationId: string) {
-    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+    if (!limitsOn()) {
       return MAX_SOURCE_MINUTES;
     }
 

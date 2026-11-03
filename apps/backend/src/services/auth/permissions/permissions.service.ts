@@ -1,4 +1,5 @@
 import { Ability, AbilityBuilder, AbilityClass } from '@casl/ability';
+import { limitsOn } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { Injectable } from '@nestjs/common';
 import { pricing } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/pricing';
 import { SubscriptionService } from '@gitroom/nestjs-libraries/database/prisma/subscriptions/subscription.service';
@@ -23,8 +24,7 @@ export class PermissionsService {
       await this._subscriptionService.getSubscriptionByOrganizationId(orgId);
 
     const tier =
-      subscription?.subscriptionTier ||
-      (!process.env.STRIPE_PUBLISHABLE_KEY ? 'PRO' : 'FREE');
+      subscription?.subscriptionTier || (!limitsOn() ? 'PRO' : 'FREE');
 
     const { channel, ...all } = pricing[tier];
     return {
@@ -47,10 +47,7 @@ export class PermissionsService {
       Ability<[AuthorizationActions, Sections]>
     >(Ability as AbilityClass<AppAbility>);
 
-    if (
-      requestedPermission.length === 0 ||
-      !process.env.STRIPE_PUBLISHABLE_KEY
-    ) {
+    if (requestedPermission.length === 0 || !limitsOn()) {
       for (const [action, section] of requestedPermission) {
         can(action, section);
       }
