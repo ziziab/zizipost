@@ -134,7 +134,7 @@ const EditGroupNameModal: FC<{
       const { message } = await response.json().catch(() => ({} as any));
       toaster.show(
         (Array.isArray(message) ? message[0] : message) ||
-          t('could_not_save_group', 'Could not save the group.'),
+          t('could_not_save_group', 'Could not save the brand.'),
         'warning'
       );
       return;
@@ -147,7 +147,7 @@ const EditGroupNameModal: FC<{
       <Input
         name="name"
         disableForm={true}
-        label={t('group_name', 'Name')}
+        label={t('group_name', 'Brand name')}
         value={groupName}
         onChange={(e) => setGroupName(e.target.value)}
       />
@@ -215,7 +215,7 @@ export const MenuGroupComponent: FC<
       e.stopPropagation();
       const val: string | undefined = await new Promise((resolve) => {
         modals.openModal({
-          title: t('edit_group_name', 'Edit group name'),
+          title: t('edit_group_name', 'Edit brand name'),
           onClose: () => resolve(undefined),
           children: (close) => (
             <EditGroupNameModal
@@ -231,7 +231,7 @@ export const MenuGroupComponent: FC<
         return;
       }
       await mutate();
-      toaster.show(t('group_updated', 'Group Updated'), 'success');
+      toaster.show(t('group_updated', 'Brand updated'), 'success');
     },
     [group.name, group.id, mutate, modals, t]
   );

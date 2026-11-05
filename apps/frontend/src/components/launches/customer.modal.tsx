@@ -51,14 +51,17 @@ export const CustomerModal: FC<{
     <div className="relative w-full">
       <div className="mb-[80px] flex flex-col gap-[6px]">
         <label htmlFor="customer-name" className="text-[14px] text-white">
-          {t('select_customer_label', 'Select Customer')}
+          {t('select_customer_label', 'Brand name')}
         </label>
         <input
           id="customer-name"
           list="customer-name-options"
           value={customer ?? ''}
           onChange={(e) => setCustomer(e.target.value)}
-          placeholder={t('start_typing', 'Start typing...')}
+          placeholder={t(
+            'brand_name_placeholder',
+            'Type a new brand name, or pick one'
+          )}
           autoComplete="off"
           className="bg-newBgColorInner h-[42px] border-newTableBorder border rounded-[8px] text-textColor placeholder-textColor px-[16px] text-[14px] outline-none"
         />
@@ -67,13 +70,19 @@ export const CustomerModal: FC<{
             <option key={name} value={name} />
           ))}
         </datalist>
+        <div className="text-[13px] text-textItemBlur">
+          {t(
+            'brand_help',
+            "A brand keeps one business's channels together. Type a new name to create a brand, or pick one you already made. Once you have two or more brands, switch between them with the brand picker at the top of the calendar."
+          )}
+        </div>
       </div>
 
       <div className="my-[16px] flex gap-[10px]">
         <Button onClick={() => saveCustomer()}>{t('save', 'Save')}</Button>
         {!!integration?.customer?.name && (
           <Button className="bg-red-700" onClick={removeFromCustomer}>
-            {t('remove_from_customer', 'Remove from customer')}
+            {t('remove_from_customer', 'Remove from brand')}
           </Button>
         )}
       </div>
