@@ -19,23 +19,13 @@ import { useAddProvider } from '@gitroom/frontend/components/launches/add.provid
 import { DropdownArrowIcon } from '@gitroom/frontend/components/ui/icons';
 import { BrandLogo } from '@gitroom/frontend/components/brands/brand.logo';
 import {
+  Brand,
+  useBrands,
+} from '@gitroom/frontend/components/brands/use.brands';
+import {
   forgetBrandForNewChannel,
   rememberBrandForNewChannel,
 } from '@gitroom/frontend/components/brands/use.assign.pending.brand';
-
-interface Brand {
-  id: string;
-  name: string;
-  picture?: string | null;
-}
-
-const useBrands = () => {
-  const fetch = useFetch();
-  const load = useCallback(async () => {
-    return (await fetch('/integrations/customers')).json();
-  }, []);
-  return useSWR<Brand[]>('/customers', load, { fallbackData: [] });
-};
 
 const useProviders = () => {
   const fetch = useFetch();
