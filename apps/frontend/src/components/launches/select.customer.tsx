@@ -10,14 +10,23 @@ import { useToaster } from '@gitroom/react/toaster/toaster';
 import { useLaunchStore } from '@gitroom/frontend/components/new-launch/store';
 import { useShallow } from 'zustand/react/shallow';
 import { UserIcon, DropdownArrowIcon } from '@gitroom/frontend/components/ui/icons';
+import { BrandLogo } from '@gitroom/frontend/components/brands/brand.logo';
 
 export const SelectCustomer: FC<{
   onChange: (value: string) => void;
   integrations: Integrations[];
   customer?: string;
   list?: boolean;
+  // calendar filter: always show once a brand exists, with an "All brands" choice
+  allOption?: boolean;
 }> = (props) => {
-  const { onChange, integrations, customer: currentCustomer, list } = props;
+  const {
+    onChange,
+    integrations,
+    customer: currentCustomer,
+    list,
+    allOption,
+  } = props;
   const { setCurrent } = useLaunchStore(
     useShallow((state) => ({
       setCurrent: state.setCurrent,
@@ -52,7 +61,7 @@ export const SelectCustomer: FC<{
   const selectCustomer = useCallback(
     (id: string) => () => {
       toaster.show(
-        t('customer_socials_selected', 'Customer socials selected'),
+        t('customer_socials_selected', 'Brand selected'),
         'success'
       );
       setCustomer(id);
@@ -63,13 +72,28 @@ export const SelectCustomer: FC<{
     [onChange]
   );
 
-  if (totalCustomers <= 1) {
-    return null;
-  }
-
   const customers = uniqBy(integrations, (u) => u?.customer?.name).filter(
     (f) => f.customer?.name
   );
+
+  if (allOption ? !customers.length : totalCustomers <= 1) {
+    return null;
+  }
+
+  const selectedCustomer = customers.find(
+    (p) => p.customer?.id === customer
+  )?.customer;
+
+  const options = [
+    ...(allOption
+      ? [{ id: '', name: t('brand_all', 'All brands'), picture: '' }]
+      : []),
+    ...customers.map((p) => ({
+      id: p.customer?.id || '',
+      name: p.customer?.name || '',
+      picture: p.customer?.picture || '',
+    })),
+  ];
 
   if (list) {
     return (
@@ -77,16 +101,19 @@ export const SelectCustomer: FC<{
         <div className="text-[14px] font-[600] text-textItemBlur">
           {t('customers', 'Brands')}
         </div>
-        {customers.map((p) => {
-          const selected = customer === p.customer?.id;
+        {options.map((p) => {
+          const selected = (customer || '') === p.id;
           return (
             <div
-              onClick={selectCustomer(p.customer?.id)}
-              key={p.customer?.id}
+              onClick={selectCustomer(p.id)}
+              key={p.id || 'all'}
               className="min-h-[48px] flex items-center justify-between gap-[12px] cursor-pointer select-none"
             >
-              <div className="text-[14px] font-[600] truncate">
-                {p.customer?.name}
+              <div className="flex items-center gap-[8px] min-w-0">
+                {!!p.id && (
+                  <BrandLogo name={p.name} picture={p.picture} size={24} />
+                )}
+                <div className="text-[14px] font-[600] truncate">{p.name}</div>
               </div>
               <div
                 className={clsx(
@@ -116,9 +143,25 @@ export const SelectCustomer: FC<{
           open ? 'border-[#612BD3]' : 'border-newColColor'
         )}
       >
-        <div>
-          <UserIcon />
-        </div>
+        {selectedCustomer ? (
+          <div className="flex items-center gap-[8px] max-w-[180px]">
+            <BrandLogo
+              name={selectedCustomer.name || ''}
+              picture={selectedCustomer.picture}
+              size={24}
+            />
+            <div className="text-[14px] truncate">{selectedCustomer.name}</div>
+          </div>
+        ) : allOption ? (
+          <div className="flex items-center gap-[8px]">
+            <UserIcon />
+            <div className="text-[14px]">{t('brand_all', 'All brands')}</div>
+          </div>
+        ) : (
+          <div>
+            <UserIcon />
+          </div>
+        )}
         <div>
           <DropdownArrowIcon rotated={open} />
         </div>
@@ -131,13 +174,16 @@ export const SelectCustomer: FC<{
           <div className="text-[14px] font-[600] px-[12px] mb-[5px]">
             {t('customers', 'Brands')}
           </div>
-          {customers.map((p) => (
+          {options.map((p) => (
             <div
-              onClick={selectCustomer(p.customer?.id)}
-              key={p.customer?.id}
-              className="p-[12px] hover:bg-newBgColor text-[14px] font-[500] h-[32px] flex items-center"
+              onClick={selectCustomer(p.id)}
+              key={p.id || 'all'}
+              className="p-[12px] hover:bg-newBgColor text-[14px] font-[500] min-h-[44px] flex items-center gap-[8px]"
             >
-              {p.customer?.name}
+              {!!p.id && (
+                <BrandLogo name={p.name} picture={p.picture} size={24} />
+              )}
+              {p.name}
             </div>
           ))}
         </div>

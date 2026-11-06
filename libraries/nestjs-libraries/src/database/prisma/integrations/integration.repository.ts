@@ -530,6 +530,7 @@ export class IntegrationRepository {
               },
             },
       },
+      select: { id: true },
     });
   }
 
@@ -552,6 +553,7 @@ export class IntegrationRepository {
               },
             },
           },
+      select: { id: true },
     });
   }
 
@@ -565,7 +567,12 @@ export class IntegrationRepository {
     });
   }
 
-  updateCustomerName(orgId: string, id: string, name: string) {
+  updateCustomerName(
+    orgId: string,
+    id: string,
+    name: string,
+    picture?: string
+  ) {
     return this._customers.model.customer.update({
       where: {
         id,
@@ -573,6 +580,17 @@ export class IntegrationRepository {
       },
       data: {
         name,
+        ...(picture !== undefined ? { picture: picture || null } : {}),
+      },
+    });
+  }
+
+  createCustomer(orgId: string, name: string, picture?: string) {
+    return this._customers.model.customer.create({
+      data: {
+        name,
+        orgId,
+        picture: picture || null,
       },
     });
   }

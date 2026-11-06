@@ -442,6 +442,7 @@ export const Filters = () => {
       {/* phones get a single filter button that opens the filters sheet */}
       <div className="contents mobile:hidden">
         <SelectCustomer
+          allOption={true}
           customer={calendar.customer as string}
           onChange={(customer: string) => setCustomer(customer)}
           integrations={calendar.integrations}
@@ -569,6 +570,7 @@ export const Filters = () => {
         >
           <SelectCustomer
             list={true}
+            allOption={true}
             customer={calendar.customer as string}
             onChange={(customer: string) => setCustomer(customer)}
             integrations={calendar.integrations}
