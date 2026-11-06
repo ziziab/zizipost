@@ -23,13 +23,13 @@ import {
   rememberBrandForNewChannel,
 } from '@gitroom/frontend/components/brands/use.assign.pending.brand';
 
-interface Brand {
+export interface Brand {
   id: string;
   name: string;
   picture?: string | null;
 }
 
-const useBrands = () => {
+export const useBrands = () => {
   const fetch = useFetch();
   const load = useCallback(async () => {
     return (await fetch('/integrations/customers')).json();

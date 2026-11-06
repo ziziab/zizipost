@@ -17,7 +17,7 @@ import { useVariables } from '@gitroom/react/helpers/variable.context';
 import useCookie from 'react-use-cookie';
 import { SVGLine } from '@gitroom/frontend/components/launches/launches.component';
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
-const allowedIntegrations = [
+export const allowedIntegrations = [
   'facebook',
   'instagram',
   'instagram-standalone',
