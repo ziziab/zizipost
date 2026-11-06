@@ -4,10 +4,11 @@ import { useCallback, useState } from 'react';
 import { Select } from '@gitroom/react/form/select';
 import { Button } from '@gitroom/react/form/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { useBrands } from '@gitroom/frontend/components/brands/brands.component';
-import { ReportDocument } from '@gitroom/frontend/components/reports/report.document';
-
-export const reportPeriods = [7, 30];
+import { useBrands } from '@gitroom/frontend/components/brands/use.brands';
+import {
+  ReportDocument,
+  reportPeriods,
+} from '@gitroom/frontend/components/reports/report.document';
 
 export const ReportsComponent = () => {
   const t = useT();

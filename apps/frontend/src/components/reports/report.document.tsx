@@ -4,14 +4,15 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import dayjs from 'dayjs';
 import utc from 'dayjs/plugin/utc';
-import { groupBy, orderBy } from 'lodash';
+import { groupBy, orderBy, uniqBy } from 'lodash';
+import { expandPosts } from '@gitroom/helpers/utils/posts.list.minify';
 import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 import { stripHtmlValidation } from '@gitroom/helpers/utils/strip.html.validation';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
 import { useVariables } from '@gitroom/react/helpers/variable.context';
 import ImageWithFallback from '@gitroom/react/helpers/image.with.fallback';
 import { useIntegrationList } from '@gitroom/frontend/components/launches/helpers/use.integration.list';
-import { useBrands } from '@gitroom/frontend/components/brands/brands.component';
+import { useBrands } from '@gitroom/frontend/components/brands/use.brands';
 import { BrandLogo } from '@gitroom/frontend/components/brands/brand.logo';
 import { allowedIntegrations } from '@gitroom/frontend/components/platform-analytics/platform.analytics';
 import {
@@ -23,6 +24,8 @@ import { ChartSocial } from '@gitroom/frontend/components/analytics/chart-social
 import { LoadingComponent } from '@gitroom/frontend/components/layout/loading';
 
 dayjs.extend(utc);
+
+export const reportPeriods = [7, 30];
 
 interface ReportPost {
   id: string;
@@ -54,7 +57,7 @@ const useReportPosts = (
     if (!response.ok) {
       return [];
     }
-    return (await response.json()).posts || [];
+    return expandPosts(await response.json()).posts || [];
   }, [brandId, startDate, endDate]);
   return useSWR<ReportPost[]>(
     `report-posts-${brandId}-${startDate}-${endDate}`,
@@ -223,8 +226,9 @@ export const ReportDocument: FC<{
   }, [integrations, brandId, disableXAnalytics]);
 
   const posts = useMemo(() => {
+    // Repeating posts come back once per repeat, keep each post once
     return orderBy(
-      (allPosts || []).filter(
+      uniqBy(allPosts || [], 'id').filter(
         (p) =>
           p.state === 'PUBLISHED' &&
           dayjs.utc(p.publishDate).isAfter(startDate) &&
@@ -278,7 +282,7 @@ export const ReportDocument: FC<{
           </div>
         </div>
         <div className="text-[18px] font-[700] tracking-[1px]">
-          ZIZI<span className="text-[#410306]">POST</span>
+          ZIZI<span className="text-[#B0122C]">POST</span>
         </div>
       </div>
 

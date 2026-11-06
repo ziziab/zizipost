@@ -1,11 +1,13 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button } from '@gitroom/react/form/button';
 import { useT } from '@gitroom/react/translation/get.transation.service.client';
-import { ReportDocument } from '@gitroom/frontend/components/reports/report.document';
-import { reportPeriods } from '@gitroom/frontend/components/reports/reports.component';
+import {
+  ReportDocument,
+  reportPeriods,
+} from '@gitroom/frontend/components/reports/report.document';
 
 export const PrintReport = () => {
   const t = useT();
@@ -18,17 +20,28 @@ export const PrintReport = () => {
 
   // Open the browser "Save as PDF" window once all numbers are loaded,
   // leaving a moment for the charts to finish drawing
+  const printed = useRef(false);
   const onReady = useCallback(() => {
     setReady(true);
+    if (printed.current) {
+      return;
+    }
+    printed.current = true;
     setTimeout(() => window.print(), 1200);
   }, []);
+
+  // A slow channel should not block the download forever
+  useEffect(() => {
+    const timeout = setTimeout(onReady, 30000);
+    return () => clearTimeout(timeout);
+  }, [onReady]);
 
   return (
     <div className="max-w-[900px] mx-auto p-[24px] print:p-0 print:max-w-none">
       <style>{`
         @page { size: A4; margin: 12mm; }
         @media print {
-          html, body { background: #fff !important; }
+          html, html body { background: #fff !important; }
           * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         }
       `}</style>
