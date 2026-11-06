@@ -143,7 +143,15 @@ export class IntegrationService {
     );
   }
 
-  updateIntegrationGroup(org: string, id: string, group: string) {
+  async updateIntegrationGroup(org: string, id: string, group: string) {
+    if (
+      group &&
+      !(await this._integrationRepository.customers(org)).some(
+        (p) => p.id === group
+      )
+    ) {
+      throw new HttpException('Brand not found', HttpStatus.BAD_REQUEST);
+    }
     return this._integrationRepository.updateIntegrationGroup(org, id, group);
   }
 
@@ -541,18 +549,48 @@ export class IntegrationService {
     return this._integrationRepository.customers(orgId);
   }
 
-  async updateCustomerName(orgId: string, id: string, name: string) {
+  async updateCustomerName(
+    orgId: string,
+    id: string,
+    name: string,
+    picture?: string
+  ) {
+    if (!name) {
+      throw new HttpException('Brand name is required', HttpStatus.BAD_REQUEST);
+    }
     const exists = await this._integrationRepository.getCustomerByName(
       orgId,
       name
     );
     if (exists && exists.id !== id) {
       throw new HttpException(
-        'A group with this name already exists',
+        'A brand with this name already exists',
         HttpStatus.BAD_REQUEST
       );
     }
-    return this._integrationRepository.updateCustomerName(orgId, id, name);
+    return this._integrationRepository.updateCustomerName(
+      orgId,
+      id,
+      name,
+      picture
+    );
+  }
+
+  async createCustomer(orgId: string, name: string, picture?: string) {
+    if (!name) {
+      throw new HttpException('Brand name is required', HttpStatus.BAD_REQUEST);
+    }
+    const exists = await this._integrationRepository.getCustomerByName(
+      orgId,
+      name
+    );
+    if (exists) {
+      throw new HttpException(
+        'A brand with this name already exists',
+        HttpStatus.BAD_REQUEST
+      );
+    }
+    return this._integrationRepository.createCustomer(orgId, name, picture);
   }
 
   getPlugsByIntegrationId(org: string, integrationId: string) {

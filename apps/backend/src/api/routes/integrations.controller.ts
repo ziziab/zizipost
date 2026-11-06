@@ -68,13 +68,30 @@ export class IntegrationsController {
     return this._integrationService.customers(org.id);
   }
 
+  @Post('/customers')
+  createCustomer(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CustomerNameDto
+  ) {
+    return this._integrationService.createCustomer(
+      org.id,
+      body.name.trim(),
+      body.picture
+    );
+  }
+
   @Put('/customers/:id')
   async updateCustomerName(
     @GetOrgFromRequest() org: Organization,
     @Param('id') id: string,
     @Body() body: CustomerNameDto
   ) {
-    return this._integrationService.updateCustomerName(org.id, id, body.name);
+    return this._integrationService.updateCustomerName(
+      org.id,
+      id,
+      body.name.trim(),
+      body.picture
+    );
   }
 
   @Put('/:id/group')

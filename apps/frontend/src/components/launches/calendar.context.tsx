@@ -112,6 +112,7 @@ export interface Integrations {
   customer?: {
     name?: string;
     id?: string;
+    picture?: string | null;
   };
 }
 

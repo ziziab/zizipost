@@ -33,6 +33,8 @@ import { ChannelsAfterPayment } from '@gitroom/frontend/components/layout/check.
 import { useModals } from '@gitroom/frontend/components/layout/new-modal';
 import { Input } from '@gitroom/react/form/input';
 import { Button } from '@gitroom/react/form/button';
+import { BrandLogo } from '@gitroom/frontend/components/brands/brand.logo';
+import { useAssignPendingBrand } from '@gitroom/frontend/components/brands/use.assign.pending.brand';
 
 export const SVGLine = () => {
   return (
@@ -184,6 +186,7 @@ export const MenuGroupComponent: FC<
     group: {
       id: string;
       name: string;
+      picture?: string;
       values: Array<
         Integration & {
           identifier: string;
@@ -278,6 +281,7 @@ export const MenuGroupComponent: FC<
           <div>
             <OpenClose isOpen={isOpen} />
           </div>
+          <BrandLogo name={group.name} picture={group.picture} size={20} />
           <div
             className="line-clamp-1"
             {...(collapsed
@@ -471,6 +475,7 @@ export const LaunchesComponent = () => {
   const [channelsOpen, setChannelsOpen] = useState(false);
   const [mode] = useCookie('mode', 'dark');
   const { isLoading, data: integrations, mutate } = useIntegrationList();
+  useAssignPendingBrand(integrations, search.get('added'), mutate);
 
   const totalNonDisabledChannels = useMemo(() => {
     return (
@@ -518,6 +523,7 @@ export const LaunchesComponent = () => {
       ).map((p) => ({
         name: (p[0].customer?.name || '') as string,
         id: (p[0].customer?.id || '') as string,
+        picture: (p[0].customer?.picture || '') as string,
         isEmpty: p.length === 0,
         values: orderBy(
           p,
