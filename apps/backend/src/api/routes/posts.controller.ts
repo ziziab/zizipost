@@ -11,6 +11,7 @@ import {
   Res,
 } from '@nestjs/common';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
+import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.service';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { Organization, User } from '@prisma/client';
 import { GetPostsDto } from '@gitroom/nestjs-libraries/dtos/posts/get.posts.dto';
@@ -41,7 +42,8 @@ export class PostsController {
   constructor(
     private _postsService: PostsService,
     private _agentGraphService: AgentGraphService,
-    private _shortLinkService: ShortLinkService
+    private _shortLinkService: ShortLinkService,
+    private _approvalsService: ApprovalsService
   ) {}
 
   @Get('/:id/statistics')
@@ -178,6 +180,22 @@ export class PostsController {
       throw new HttpException('Forbidden', 403);
     }
     return this._postsService.getPostGroupDebugExport(org.id, group);
+  }
+
+  @Post('/group/:group/approval')
+  createApprovalLink(
+    @GetOrgFromRequest() org: Organization,
+    @Param('group') group: string
+  ) {
+    return this._approvalsService.createLink(org.id, group);
+  }
+
+  @Get('/group/:group/approval')
+  getApproval(
+    @GetOrgFromRequest() org: Organization,
+    @Param('group') group: string
+  ) {
+    return this._approvalsService.getLatest(org.id, group);
   }
 
   @Get('/group/:group')

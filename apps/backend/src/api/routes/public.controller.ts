@@ -30,6 +30,8 @@ import { OnlyURL } from '@gitroom/nestjs-libraries/dtos/webhooks/webhooks.dto';
 import { isSafePublicHttpsUrl } from '@gitroom/nestjs-libraries/dtos/webhooks/webhook.url.validator';
 import { ssrfSafeDispatcher } from '@gitroom/nestjs-libraries/dtos/webhooks/ssrf.safe.dispatcher';
 import { CreatePublicCommentDto } from '@gitroom/nestjs-libraries/dtos/comments/add.comment.dto';
+import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.service';
+import { ApprovalDecisionDto } from '@gitroom/nestjs-libraries/dtos/approvals/approval.decision.dto';
 
 const pump = promisify(pipeline);
 
@@ -40,7 +42,8 @@ export class PublicController {
     private _trackService: TrackService,
     private _agentGraphInsertService: AgentGraphInsertService,
     private _postsService: PostsService,
-    private _subscriptionService: SubscriptionService
+    private _subscriptionService: SubscriptionService,
+    private _approvalsService: ApprovalsService
   ) {}
   @Post('/agent')
   async createAgent(@Body() body: { text: string; apiKey: string }) {
@@ -109,6 +112,20 @@ export class PublicController {
           : {}),
       })
     );
+  }
+
+  // ZIZIPOST: a client opens the approval link, no account needed
+  @Get('/approvals/:token')
+  getApproval(@Param('token') token: string) {
+    return this._approvalsService.getForClient(token);
+  }
+
+  @Post('/approvals/:token')
+  decideApproval(
+    @Param('token') token: string,
+    @Body() body: ApprovalDecisionDto
+  ) {
+    return this._approvalsService.decide(token, body);
   }
 
   @Get(`/posts/:id/comments`)
