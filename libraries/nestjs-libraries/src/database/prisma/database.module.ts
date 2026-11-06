@@ -1,5 +1,9 @@
 import { Global, Module } from '@nestjs/common';
-import { PrismaRepository, PrismaService, PrismaTransaction } from './prisma.service';
+import {
+  PrismaRepository,
+  PrismaService,
+  PrismaTransaction,
+} from './prisma.service';
 import { OrganizationRepository } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.repository';
 import { OrganizationService } from '@gitroom/nestjs-libraries/database/prisma/organizations/organization.service';
 import { UsersService } from '@gitroom/nestjs-libraries/database/prisma/users/users.service';
@@ -37,6 +41,8 @@ import { AutopostRepository } from '@gitroom/nestjs-libraries/database/prisma/au
 import { AutopostService } from '@gitroom/nestjs-libraries/database/prisma/autopost/autopost.service';
 import { SetsService } from '@gitroom/nestjs-libraries/database/prisma/sets/sets.service';
 import { SetsRepository } from '@gitroom/nestjs-libraries/database/prisma/sets/sets.repository';
+import { ApprovalsService } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.service';
+import { ApprovalsRepository } from '@gitroom/nestjs-libraries/database/prisma/approvals/approvals.repository';
 import { ThirdPartyRepository } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.repository';
 import { ThirdPartyService } from '@gitroom/nestjs-libraries/database/prisma/third-party/third-party.service';
 import { VideoManager } from '@gitroom/nestjs-libraries/videos/video.manager';
@@ -98,6 +104,8 @@ import { AdminStatsService } from '@gitroom/nestjs-libraries/database/prisma/adm
     ShortLinkService,
     SetsService,
     SetsRepository,
+    ApprovalsService,
+    ApprovalsRepository,
     ThirdPartyRepository,
     ThirdPartyService,
     OAuthRepository,

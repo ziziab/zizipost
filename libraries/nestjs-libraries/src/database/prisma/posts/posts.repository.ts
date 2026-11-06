@@ -436,6 +436,97 @@ export class PostsRepository {
     });
   }
 
+  // ZIZIPOST: a post and the other channels it was made with, for a client
+  // to approve. The channel fields are only the ones a client may see.
+  async getPostsForApproval(orgId: string, group: string) {
+    const root = await this._post.model.post.findFirst({
+      where: {
+        organizationId: orgId,
+        group,
+        deletedAt: null,
+      },
+      select: {
+        batchId: true,
+        integration: {
+          select: {
+            customerId: true,
+          },
+        },
+      },
+    });
+    if (!root) {
+      return [];
+    }
+    // the other channels of the batch only when they are in the same brand,
+    // a client never sees another brand's post
+    return this._post.model.post.findMany({
+      where: {
+        organizationId: orgId,
+        deletedAt: null,
+        integration: {
+          deletedAt: null,
+          disabled: false,
+        },
+        OR: [
+          { group },
+          ...(root.batchId
+            ? [
+                {
+                  batchId: root.batchId,
+                  integration: {
+                    customerId: root.integration?.customerId ?? null,
+                  },
+                },
+              ]
+            : []),
+        ],
+      },
+      orderBy: {
+        createdAt: 'asc',
+      },
+      select: {
+        id: true,
+        group: true,
+        parentPostId: true,
+        state: true,
+        content: true,
+        image: true,
+        settings: true,
+        publishDate: true,
+        integrationId: true,
+        integration: {
+          select: {
+            name: true,
+            picture: true,
+            providerIdentifier: true,
+            profile: true,
+            customer: {
+              select: {
+                name: true,
+                picture: true,
+              },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  // ZIZIPOST: an approved draft goes to the queue, with its thread
+  changeDraftGroupState(orgId: string, group: string, state: State) {
+    return this._post.model.post.updateMany({
+      where: {
+        organizationId: orgId,
+        group,
+        deletedAt: null,
+        state: 'DRAFT',
+      },
+      data: {
+        state,
+      },
+    });
+  }
+
   // the posts of the other channels in the batch, without the given group
   getPostsByBatch(orgId: string, batchId: string, exceptGroup: string) {
     return this._post.model.post.findMany({

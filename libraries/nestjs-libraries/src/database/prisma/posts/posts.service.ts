@@ -722,6 +722,146 @@ export class PostsService {
     };
   }
 
+  // ZIZIPOST: what a client sees on the approval page, every channel of the
+  // post, with the brand of its channel
+  async getApprovalPreview(orgId: string, group: string) {
+    const all = await this._postRepository.getPostsForApproval(orgId, group);
+    const groups = Object.values(groupBy(all, (p) => p.group))
+      .map((list) => this.arrangePostsByGroup(list, undefined) as any[])
+      .filter((list) => list.length);
+    if (!groups.length) {
+      throw new NotFoundException('Post not found');
+    }
+    const main = groups.find((list) => list[0].group === group) || groups[0];
+    const customer = main[0].integration?.customer;
+    return {
+      brand: customer
+        ? { name: customer.name, picture: customer.picture }
+        : null,
+      posts: groups.map((list) => ({
+        group: list[0].group as string,
+        state: list[0].state as State,
+        publishDate: list[0].publishDate as Date,
+        integration: {
+          name: list[0].integration?.name,
+          picture: list[0].integration?.picture,
+          providerIdentifier: list[0].integration?.providerIdentifier,
+          profile: list[0].integration?.profile,
+        },
+        values: list.map((p) => {
+          let image: { path: string }[] = [];
+          try {
+            image = (JSON.parse(p.image || '[]') || [])
+              .filter((i: any) => i?.path)
+              .map((i: any) => ({ path: i.path }));
+          } catch (e) {}
+          return { content: p.content as string, image };
+        }),
+      })),
+    };
+  }
+
+  // ZIZIPOST: the drafts a client can approve, each checked like the editor
+  // checks a post before it is scheduled
+  async getApprovableDrafts(orgId: string, group: string) {
+    const all = await this._postRepository.getPostsForApproval(orgId, group);
+    const lists = Object.values(groupBy(all, (p) => p.group))
+      .map(
+        (list) =>
+          this.arrangePostsByGroup(list, undefined) as unknown as typeof all
+      )
+      .filter((list) => list.length && list[0].state === 'DRAFT');
+    if (!lists.length) {
+      throw new BadRequestException('This post is not waiting for approval');
+    }
+
+    const validation = await this.validatePosts(
+      orgId,
+      lists.map((list) => {
+        let settings: any = {};
+        try {
+          settings = JSON.parse(list[0].settings || '{}');
+        } catch (e) {}
+        return {
+          integration: { id: list[0].integrationId },
+          settings,
+          value: list.map((p) => {
+            let image: any[] = [];
+            try {
+              image = JSON.parse(p.image || '[]') || [];
+            } catch (e) {}
+            return { content: p.content, image };
+          }),
+        };
+      })
+    );
+    for (const item of validation) {
+      const problem = item.emptyContent
+        ? 'the post is empty'
+        : !item.valid
+        ? item.settingsError || 'its settings need fixing'
+        : item.errors !== true
+        ? (item.errors as string)
+        : item.tooLong
+        ? 'the post is too long'
+        : '';
+      if (problem) {
+        throw new BadRequestException(
+          `The ${item.name} post needs a fix before it can be approved: ${problem}`
+        );
+      }
+    }
+
+    return lists.map((list) => list[0]);
+  }
+
+  // ZIZIPOST: a client approved the post, schedule every channel that is
+  // still a draft, the same way a draft is moved to the calendar
+  async scheduleApprovedDrafts(orgId: string, group: string) {
+    const roots = await this.getApprovableDrafts(orgId, group);
+
+    await this.checkYoutubeDailyLimit(orgId, {
+      type: 'schedule',
+      date: roots[0].publishDate.toISOString(),
+      posts: roots.map((root) => ({
+        group: root.group,
+        date: root.publishDate.toISOString(),
+        settings: { __type: root.integration.providerIdentifier },
+      })),
+    } as any);
+
+    for (const root of roots) {
+      await this._postRepository.changeDraftGroupState(
+        orgId,
+        root.group,
+        'QUEUE'
+      );
+      await this.startWorkflow(
+        root.integration.providerIdentifier.split('-')[0].toLowerCase(),
+        root.id,
+        orgId,
+        'QUEUE'
+      );
+    }
+  }
+
+  // ZIZIPOST: the client's note shows as a comment on the post
+  async addApprovalNote(
+    orgId: string,
+    group: string,
+    name: string,
+    note: string
+  ) {
+    const all = await this._postRepository.getPostsForApproval(orgId, group);
+    const root = all.find((p) => p.group === group && !p.parentPostId);
+    if (!root) {
+      return;
+    }
+    await this._postRepository.createComment(orgId, null, root.id, note, {
+      displayName: name,
+    });
+  }
+
   arrangePostsByGroup(all: any, parent?: string): PostWithConditionals[] {
     const findAll = all
       .filter((p: any) =>
